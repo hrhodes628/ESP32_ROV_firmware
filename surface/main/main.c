@@ -16,10 +16,10 @@
 #include "esp_mac.h"
 
 static const int RX_BUF_SIZE = 1024;
-#define TXD_PIN (GPIO_NUM_17)
-#define RXD_PIN (GPIO_NUM_16)
+#define TXD_PIN (GPIO_NUM_16)
+#define RXD_PIN (GPIO_NUM_21)
 #define UART UART_NUM_2
-static StreamBufferHandle_t stream_1 = NULL;
+StreamBufferHandle_t stream_1 = NULL;
 
 void init(void)
 {
@@ -39,25 +39,40 @@ void init(void)
 
 static void tx_task(void* arg)
 {
-    int* data = (int*) malloc(4);
+    uint8_t data[2] = {0};
+    uint8_t pack[3] = {0};
     while (1) {
-        int size = xStreamBufferReceive(stream_1, data, 4, 10000);
-        printf("from tx task %d\n", *data);
-        uart_write_bytes(UART, data , 4);
+        xStreamBufferReceive(stream_1, &data, 2, 10000);
+        printf("from rx task:");
+        for(int i=0; i<sizeof(data);i++){
+            printf("%x", data[i]);
+        }
+        printf("\n");
+        pack[0]=0x44;
+
+        pack[1]=data[0];
+        pack[2]=data[1];
+        uart_write_bytes(UART, pack , 3);
+        vTaskDelay(100);
     }
     // free(data);
 }
 
 void term_read(void* arg){
 
-    int var=0;
+    uint16_t var=0;
+    uint8_t buf[2]= {0};
     while(1){
         printf("\n");
         fflush(stdout);
         vTaskDelay(1000);
-        scanf("%d", &var);
-        printf("from reader %d\n", var);
-        xStreamBufferSend(stream_1,(void*) &var, 4, 1000);
+        scanf("%hu", &var);
+        printf("from reader %hu\n", var);
+
+        buf[0] = var & 0xFF;
+        buf[1] = var >> 8;
+
+        xStreamBufferSend(stream_1,(void*) &buf, 2, 1000);
     }
 }
 
