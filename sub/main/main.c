@@ -9,6 +9,7 @@
 #include "esp_mac.h"
 #include "driver/mcpwm_prelude.h"
 
+
 static const char *TAG = "sub";
 
 static const int RX_BUF_SIZE = 1024;
@@ -68,15 +69,14 @@ void init(void)
 
     ESP_ERROR_CHECK(mcpwm_new_comparator(oper, &comparator_cfg, &comparator));
 
-    ESP_ERROR_CHECK(mcpwm_generator_set_actions_on_timer_event(
+    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(
         gen,
-        MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH),
-        MCPWM_GEN_TIMER_EVENT_ACTION_END()));
-
-    ESP_ERROR_CHECK(mcpwm_generator_set_actions_on_compare_event(
+        MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)
+    ));
+    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(
         gen,
-        MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comparator, MCPWM_GEN_ACTION_LOW),
-        MCPWM_GEN_COMPARE_EVENT_ACTION_END()));
+        MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comparator, MCPWM_GEN_ACTION_LOW)
+    ));
 
     ESP_ERROR_CHECK(mcpwm_timer_enable(pwmTimer));
     ESP_ERROR_CHECK(mcpwm_timer_start_stop(pwmTimer, MCPWM_TIMER_START_NO_STOP));

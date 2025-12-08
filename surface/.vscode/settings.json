@@ -7,13 +7,13 @@
         "IDF_CCACHE_ENABLE": "1",
         "ESP_ROM_ELF_DIR": "c:\\Espressif\\frameworks\\esp-idf-v5.3\\tools\\tools\\esp-rom-elfs\\20240305/"
     },
-    "idf.espIdfPathWin": "c:\\Espressif\\frameworks\\esp-idf-v5.3",
+    "idf.espIdfPathWin": "C:/Espressif/frameworks/esp-idf-v6.0/",
     "idf.openOcdConfigs": [
         "board/esp32-wrover-kit-3.3v.cfg"
     ],
     "idf.portWin": "COM6",
     "idf.pythonBinPathWin": "c:\\Espressif\\frameworks\\esp-idf-v5.3\\tools\\python_env\\idf5.3_py3.11_env\\Scripts\\python.exe",
-    "idf.toolsPathWin": "c:\\Espressif\\frameworks\\esp-idf-v5.3\\tools",
+    "idf.toolsPathWin": "C:\\Espressif\\tools",
     "idf.flashType": "UART",
-    "idf.pythonInstallPath": "c:\\Espressif\\frameworks\\esp-idf-v5.3\\tools\\tools\\idf-python\\3.11.2\\python.exe"
+    "idf.pythonInstallPath": "C:\\Espressif\\tools\\tools\\idf-python\\3.11.2\\python.exe"
 }

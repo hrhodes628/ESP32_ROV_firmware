@@ -1,0 +1,101 @@
+Command: cmake -G Ninja -B C:\Users\Harry\Documents\dev\ROV\surface\build -DPYTHON_DEPS_CHECKED=1 -DPYTHON=C:\Espressif\tools\python_env\idf6.0_py3.11_env\Scripts\python.exe -DESP_PLATFORM=1 -DSDKCONFIG='c:\Users\Harry\Documents\dev\ROV\surface\sdkconfig' -DCCACHE_ENABLE=True C:\Users\Harry\Documents\dev\ROV\surface
+C:\Users\Harry\AppData\Local\Temp\kconfgen_tmpbgjpoee1:5: warning: '"Not determined"' is not a valid value for the bool symbol SOC_BROWNOUT_RESET_SUPPORTED (defined at C:/Espressif/frameworks/esp-idf-v6.0\./components/soc/esp32/include/soc/Kconfig.soc_caps.in:274). Assignment ignored.
+warning: the value 'y' is invalid for SOC_MPI_OPERATIONS_NUM (defined at C:/Espressif/frameworks/esp-idf-v6.0\./components/soc/esp32/include/soc/Kconfig.soc_caps.in:690), which has type int -- assignment ignored
+warning: the value 'y' is invalid for SOC_EFUSE_SECURE_BOOT_KEY_DIGESTS (defined at C:/Espressif/frameworks/esp-idf-v6.0\./components/soc/esp32/include/soc/Kconfig.soc_caps.in:714), which has type int -- assignment ignored
+Configuration Report                                                           
++-----------------------------------------------------------------------------+
+|  Parser Version: 1                                                          |
+|  Verbosity: default                                                         |
+|  Defaults policy: sdkconfig                                                 |
+|  Status: Finished with notifications                                        |
+|                                                                             |
+| Miscellaneous                                                               |
+| +-------------------------------------------------------------------------+ |
+| | * Trying to set symbol ESP_DEFAULT_CPU_FREQ_MHZ_160 to n, but it is     | |
+| | currently selected by choice ESP_DEFAULT_CPU_FREQ_MHZ. For setting it   | |
+| | to n, set another choice symbol to y instead.                           | |
+| | * Trying to set symbol ESPTOOLPY_FLASHSIZE_2MB to n, but it is          | |
+| | currently selected by choice ESPTOOLPY_FLASHSIZE. For setting it to n,  | |
+| | set another choice symbol to y instead.                                 | |
+| +-------------------------------------------------------------------------+ |
+| Multiple Assignments                                                        |
+| +-------------------------------------+                                     |
+| | Symbol ADC_CALI_EFUSE_TP_ENABLE:    |                                     |
+| |     y (user-set value)              |                                     |
+| |     y (user-set value)              |                                     |
+| |     -> using y                      |                                     |
+| | Symbol ADC_CALI_EFUSE_VREF_ENABLE:  |                                     |
+| |     y (user-set value)              |                                     |
+| |     y (user-set value)              |                                     |
+| |     -> using y                      |                                     |
+| | Symbol ADC_CALI_LUT_ENABLE:         |                                     |
+| |     y (user-set value)              |                                     |
+| |     y (user-set value)              |                                     |
+| |     -> using y                      |                                     |
+| | Symbol ADC_DISABLE_DAC_OUTPUT:      |                                     |
+| |     y (user-set value)              |                                     |
+| |     y (user-set value)              |                                     |
+| |     -> using y                      |                                     |
+| +-------------------------------------+                                     |
++-----------------------------------------------------------------------------+
+warning: user value 68 on the int symbol LWIP_DHCP_OPTIONS_LEN (defined at C:/Espressif/frameworks/esp-idf-v6.0/components/lwip/Kconfig:372) ignored due to being outside the active range ([69, 255]) -- falling back on defaults
+CMake Warning at C:/Espressif/frameworks/esp-idf-v6.0/tools/cmake/component_validation.cmake:106 (message):
+  Private include directory
+  'C:/Espressif/frameworks/esp-idf-v6.0/components/esp_wifi/wifi_apps/roaming_app/include'
+  belongs to component esp_wifi but is being used by component
+  wpa_supplicant.  It is recommended to define the component dependency for
+  wpa_supplicant on the component esp_wifi, i.e.  'idf_component_register(...
+  PRIV_REQUIRES esp_wifi)' in the CMakeLists.txt of wpa_supplicant, and
+  specify the included directory as idf_component_register(...
+  PRIV_INCLUDE_DIRS <dir relative to component>) in the CMakeLists.txt of
+  component esp_wifi.
+Call Stack (most recent call first):
+  C:/Espressif/frameworks/esp-idf-v6.0/tools/cmake/component_validation.cmake:130 (__component_validation_check_include_dirs)
+  C:/Espressif/frameworks/esp-idf-v6.0/CMakeLists.txt:338 (__component_validation_run_checks)
+
+
+CMake Warning at C:/Espressif/frameworks/esp-idf-v6.0/tools/cmake/component_validation.cmake:106 (message):
+  Private include directory
+  'C:/Espressif/frameworks/esp-idf-v6.0/components/esp_wifi/wifi_apps/roaming_app/src'
+  belongs to component esp_wifi but is being used by component
+  wpa_supplicant.  It is recommended to define the component dependency for
+  wpa_supplicant on the component esp_wifi, i.e.  'idf_component_register(...
+  PRIV_REQUIRES esp_wifi)' in the CMakeLists.txt of wpa_supplicant, and
+  specify the included directory as idf_component_register(...
+  PRIV_INCLUDE_DIRS <dir relative to component>) in the CMakeLists.txt of
+  component esp_wifi.
+Call Stack (most recent call first):
+  C:/Espressif/frameworks/esp-idf-v6.0/tools/cmake/component_validation.cmake:130 (__component_validation_check_include_dirs)
+  C:/Espressif/frameworks/esp-idf-v6.0/CMakeLists.txt:338 (__component_validation_run_checks)
+
+
+CMake Warning at C:/Espressif/frameworks/esp-idf-v6.0/tools/cmake/component_validation.cmake:106 (message):
+  Private include directory
+  'C:/Espressif/frameworks/esp-idf-v6.0/components/wpa_supplicant/src'
+  belongs to component wpa_supplicant but is being used by component
+  esp_wifi.  It is recommended to define the component dependency for
+  esp_wifi on the component wpa_supplicant, i.e.  'idf_component_register(...
+  PRIV_REQUIRES wpa_supplicant)' in the CMakeLists.txt of esp_wifi, and
+  specify the included directory as idf_component_register(...
+  PRIV_INCLUDE_DIRS <dir relative to component>) in the CMakeLists.txt of
+  component wpa_supplicant.
+Call Stack (most recent call first):
+  C:/Espressif/frameworks/esp-idf-v6.0/tools/cmake/component_validation.cmake:130 (__component_validation_check_include_dirs)
+  C:/Espressif/frameworks/esp-idf-v6.0/CMakeLists.txt:338 (__component_validation_run_checks)
+
+
+CMake Warning at C:/Espressif/frameworks/esp-idf-v6.0/tools/cmake/component_validation.cmake:106 (message):
+  Private include directory
+  'C:/Espressif/frameworks/esp-idf-v6.0/components/wpa_supplicant/esp_supplicant/src'
+  belongs to component wpa_supplicant but is being used by component
+  esp_wifi.  It is recommended to define the component dependency for
+  esp_wifi on the component wpa_supplicant, i.e.  'idf_component_register(...
+  PRIV_REQUIRES wpa_supplicant)' in the CMakeLists.txt of esp_wifi, and
+  specify the included directory as idf_component_register(...
+  PRIV_INCLUDE_DIRS <dir relative to component>) in the CMakeLists.txt of
+  component wpa_supplicant.
+Call Stack (most recent call first):
+  C:/Espressif/frameworks/esp-idf-v6.0/tools/cmake/component_validation.cmake:130 (__component_validation_check_include_dirs)
+  C:/Espressif/frameworks/esp-idf-v6.0/CMakeLists.txt:338 (__component_validation_run_checks)
+
+
