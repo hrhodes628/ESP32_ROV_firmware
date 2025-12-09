@@ -235,7 +235,7 @@ void rx_task(void* arg){
             streampack[0]=data[i+1];
             streampack[1]=data[i+2];
             printf("from rx task:");
-            for(int i=0; i<sizeof(data);i++){
+            for(int i=sizeof(data)-1; i>=0; i--){
                 printf("%x", data[i]);
             }
             printf("\n");
@@ -256,11 +256,10 @@ void led_task(void* arg){
 
         int size = xStreamBufferReceive(stream_1, &data, 3, 10000);
         if(size>=3){
-            printf("from task2 %d\n", *data);
-        
-            duty = data[0] | (data[1] << 8);
-            ESP_LOGI(TAG, "setting the LED to %hu", duty);
+            duty = data[0] | data[1] << 8;
             ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comparator, duty));
+        }else{
+            printf("dropped packet of size %d",size);
         }
 
     }
