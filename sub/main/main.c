@@ -4,29 +4,37 @@
 #include "esp_log.h"
 #include "driver/uart.h"
 #include "driver/gpio.h"
+
+
 #include "esp_mac.h"
 #include "driver/mcpwm_prelude.h"
-#include "mavlink/ardupilotmega/mavlink.h"
 
+#include "board.h"
+#include "mavlink.h"
+#include "ibus.h"
+
+#define CHANNELS 8
+
+#define IBUS_OVERHEAD 4
+#define PACKLEN CHANNELS*2+IBUS_OVERHEAD
+#define IBUS_STREAM_LENGTH CHANNELS*2
 
 static const char *TAG = "sub";
 
 static const int RX_BUF_SIZE = 1024;
-#define streamLen 3
-#define TXD_PIN (GPIO_NUM_27)
-#define RXD_PIN (GPIO_NUM_14)
-#define UART UART_NUM_2
+StreamBufferHandle_t IBUS_STREAM = NULL;
 
-#define MAVLINK_PORT UART_NUM_1
-#define MAVLINK_TX_PIN (GPIO_NUM_17)
+mcpwm_cmpr_handle_t SERVcmpr = NULL;
+mcpwm_cmpr_handle_t M5cmpr = NULL;
+mcpwm_cmpr_handle_t LEDcmpr = NULL;
 
-#define LED_GPIO GPIO_NUM_12
-StreamBufferHandle_t stream_1 = NULL;
-mcpwm_cmpr_handle_t comparator = NULL;
-
-void init(void)
+static inline uint16_t clamp_u16(uint16_t v, uint16_t lo, uint16_t hi)
 {
-    gpio_set_direction(GPIO_NUM_2, GPIO_MODE_OUTPUT);
+    return (v < lo) ? lo : (v > hi) ? hi : v;
+}
+
+void IBUS_init(void)
+{
 
     const uart_config_t uart_config = {
         .baud_rate = 115200,
@@ -37,52 +45,113 @@ void init(void)
         .source_clk = UART_SCLK_DEFAULT,
     };
 
-    uart_driver_install(UART, RX_BUF_SIZE, 0, 0, NULL, 0);
-    uart_param_config(UART, &uart_config);
-    uart_set_pin(UART, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-    stream_1 = xStreamBufferCreate(16,3);
+    ESP_ERROR_CHECK(uart_driver_install(IBUS_UART, RX_BUF_SIZE, 0, 0, NULL, 0));
+    ESP_ERROR_CHECK(uart_param_config(IBUS_UART, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(IBUS_UART, IBUS_TXD_PIN, IBUS_RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    IBUS_STREAM = xStreamBufferCreate(IBUS_STREAM_LENGTH,IBUS_STREAM_LENGTH);
+}
 
-    //mcpwm block
-    mcpwm_timer_handle_t pwmTimer = NULL;
-    mcpwm_timer_config_t pwmTimer_config = {
+void mcpwm_init(void){
+
+    mcpwm_timer_handle_t LEDpwmTimer = NULL;
+    mcpwm_timer_config_t LEDpwmTimer_config = {
         .group_id = 0,
         .clk_src = MCPWM_TIMER_CLK_SRC_DEFAULT,
         .resolution_hz = 1000000,
-        .period_ticks = 1000,
+        .period_ticks = 100,
         .count_mode = MCPWM_TIMER_COUNT_MODE_UP
     };
-    ESP_ERROR_CHECK(mcpwm_new_timer(&pwmTimer_config, &pwmTimer));
+    ESP_ERROR_CHECK(mcpwm_new_timer(&LEDpwmTimer_config, &LEDpwmTimer));
+
+    mcpwm_timer_handle_t RCpwmTimer = NULL;
+    mcpwm_timer_config_t RCpwmTimer_config = {
+        .group_id = 0,
+        .clk_src = MCPWM_TIMER_CLK_SRC_DEFAULT,
+        .resolution_hz = 1000000,
+        .period_ticks = 20000,
+        .count_mode = MCPWM_TIMER_COUNT_MODE_UP
+    };
+    ESP_ERROR_CHECK(mcpwm_new_timer(&RCpwmTimer_config,&RCpwmTimer));
+
     
-    mcpwm_oper_handle_t oper = NULL;
+    mcpwm_oper_handle_t RCoper = NULL;
+    mcpwm_oper_handle_t LEDoper = NULL;
     mcpwm_operator_config_t oper_cfg = {
         .group_id = 0
     };
-    ESP_ERROR_CHECK(mcpwm_new_operator(&oper_cfg, &oper));
-    ESP_ERROR_CHECK(mcpwm_operator_connect_timer(oper, pwmTimer));
+    ESP_ERROR_CHECK(mcpwm_new_operator(&oper_cfg, &RCoper));
+    ESP_ERROR_CHECK(mcpwm_new_operator(&oper_cfg, &LEDoper));
+    ESP_ERROR_CHECK(mcpwm_operator_connect_timer(RCoper, RCpwmTimer));
+    ESP_ERROR_CHECK(mcpwm_operator_connect_timer(LEDoper, LEDpwmTimer));
 
-    mcpwm_gen_handle_t gen = NULL;
-    mcpwm_generator_config_t gen_cfg = {
-        .gen_gpio_num = LED_GPIO
-    };
-    ESP_ERROR_CHECK(mcpwm_new_generator(oper, &gen_cfg, &gen));
-
-    mcpwm_comparator_config_t comparator_cfg = {
-        .flags.update_cmp_on_tez = true // update at period start
+    mcpwm_comparator_config_t cmp_cfg = {
+        .flags.update_cmp_on_tez = true,   // safe update at frame start
     };
 
-    ESP_ERROR_CHECK(mcpwm_new_comparator(oper, &comparator_cfg, &comparator));
+    ESP_ERROR_CHECK(mcpwm_new_comparator(RCoper, &cmp_cfg, &SERVcmpr));
+    ESP_ERROR_CHECK(mcpwm_new_comparator(RCoper, &cmp_cfg, &M5cmpr));
+    ESP_ERROR_CHECK(mcpwm_new_comparator(LEDoper, &cmp_cfg, &LEDcmpr));
 
-    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(
-        gen,
-        MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)
-    ));
-    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(
-        gen,
-        MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comparator, MCPWM_GEN_ACTION_LOW)
-    ));
+    mcpwm_gen_handle_t SERVgen = NULL;
+    mcpwm_gen_handle_t M5gen = NULL;
+    mcpwm_gen_handle_t LEDgen = NULL;
 
-    ESP_ERROR_CHECK(mcpwm_timer_enable(pwmTimer));
-    ESP_ERROR_CHECK(mcpwm_timer_start_stop(pwmTimer, MCPWM_TIMER_START_NO_STOP));
+    mcpwm_generator_config_t gen_cfg = {};
+
+    gen_cfg.gen_gpio_num = SERV;
+    ESP_ERROR_CHECK(mcpwm_new_generator(RCoper, &gen_cfg, &SERVgen));
+
+    gen_cfg.gen_gpio_num = M5;
+    ESP_ERROR_CHECK(mcpwm_new_generator(RCoper, &gen_cfg, &M5gen));
+
+    gen_cfg.gen_gpio_num = LED;
+    ESP_ERROR_CHECK(mcpwm_new_generator(LEDoper, &gen_cfg, &LEDgen));
+
+    ESP_ERROR_CHECK(
+        mcpwm_generator_set_action_on_timer_event(
+            SERVgen,
+            MCPWM_GEN_TIMER_EVENT_ACTION(
+                MCPWM_TIMER_DIRECTION_UP,
+                MCPWM_TIMER_EVENT_EMPTY,
+                MCPWM_GEN_ACTION_HIGH)
+        )
+    );
+
+    ESP_ERROR_CHECK(
+        mcpwm_generator_set_action_on_compare_event(
+            SERVgen,
+            MCPWM_GEN_COMPARE_EVENT_ACTION(
+                MCPWM_TIMER_DIRECTION_UP,
+                SERVcmpr,
+                MCPWM_GEN_ACTION_LOW)
+        )
+    );
+
+    ESP_ERROR_CHECK(
+        mcpwm_generator_set_action_on_timer_event(
+            M5gen,
+            MCPWM_GEN_TIMER_EVENT_ACTION(
+                MCPWM_TIMER_DIRECTION_UP,
+                MCPWM_TIMER_EVENT_EMPTY,
+                MCPWM_GEN_ACTION_HIGH)
+        )
+    );
+
+    ESP_ERROR_CHECK(
+        mcpwm_generator_set_action_on_compare_event(
+            M5gen,
+            MCPWM_GEN_COMPARE_EVENT_ACTION(
+                MCPWM_TIMER_DIRECTION_UP,
+                M5cmpr,
+                MCPWM_GEN_ACTION_LOW)
+        )
+    );
+
+    ESP_ERROR_CHECK(mcpwm_timer_enable(RCpwmTimer));
+    ESP_ERROR_CHECK(mcpwm_timer_enable(LEDpwmTimer));
+    ESP_ERROR_CHECK(mcpwm_timer_start_stop(RCpwmTimer, MCPWM_TIMER_START_NO_STOP));
+    ESP_ERROR_CHECK(mcpwm_timer_start_stop(LEDpwmTimer, MCPWM_TIMER_START_NO_STOP));
+
 
 }
 
@@ -96,16 +165,16 @@ static void mav_uart_init(void)
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
     };
 
-    ESP_ERROR_CHECK(uart_driver_install(MAVLINK_PORT, 2048, 0, 0, NULL, 0));
-    ESP_ERROR_CHECK(uart_param_config(MAVLINK_PORT, &mavcfg));
-    ESP_ERROR_CHECK(uart_set_pin(MAVLINK_PORT, MAVLINK_TX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    ESP_ERROR_CHECK(uart_driver_install(MAVLINK_UART, 2048, 0, 0, NULL, 0));
+    ESP_ERROR_CHECK(uart_param_config(MAVLINK_UART, &mavcfg));
+    ESP_ERROR_CHECK(uart_set_pin(MAVLINK_UART, MAVLINK_TX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
 }
 
 static void mav_send_msg(const mavlink_message_t *msg)
 {
     uint8_t buf[MAVLINK_MAX_PACKET_LEN];
     uint16_t len = mavlink_msg_to_send_buffer(buf, msg);
-    uart_write_bytes(MAVLINK_PORT, (const char *)buf, len);
+    uart_write_bytes(MAVLINK_UART, (const char *)buf, len);
 }
 
 static void mav_send_heartbeat(void)
@@ -217,47 +286,57 @@ void mav_tx_task(void *arg)
     }
 }
 
-void rx_task(void* arg){
+void UART_rx_task(void* arg){
 
-    uint8_t data[8] = {0};
-    uint8_t streampack[2] = {0};
+    uint8_t data[PACKLEN] = {0};
+    uint8_t streampack[IBUS_STREAM_LENGTH] = {0};
     while (1) {
-        int rxBytes = uart_read_bytes(UART, &data, 3, 10000);
+        int rxBytes = uart_read_bytes(IBUS_UART, &data, PACKLEN, 10000);
 
-        if(rxBytes >= 3){
+        if(rxBytes >= PACKLEN){
             int i = 0;
-            while(data[i] != 0x44){
+            while(data[i] != 0x20 && data[i+1] != 0x44){
                 i++;
                 if(i >= 5){
                     i=0;
                 }
             }
-            streampack[0]=data[i+1];
-            streampack[1]=data[i+2];
+            for(int j=0; j<IBUS_STREAM_LENGTH;j++){
+                streampack[j]=data[i+j+2];
+            }
             printf("from rx task:");
-            for(int i=sizeof(data)-1; i>=0; i--){
+            for(int j=0; i < sizeof(streampack); i++){
                 printf("%x", data[i]);
             }
             printf("\n");
             fflush(stdout);
-            xStreamBufferSend(stream_1, &streampack, streamLen, 1000);
+            xStreamBufferSend(IBUS_STREAM, &streampack, IBUS_STREAM_LENGTH, 1000);
             
         }   
     }
 
 }
 
-void led_task(void* arg){
+void motor_task(void* arg){
 
-    uint8_t data[2] = {0};
-    uint16_t duty = 0;
+    uint8_t data[IBUS_STREAM_LENGTH] = {0};
+    uint16_t channels[CHANNELS] = {0};
+
 
     while(true){
 
-        int size = xStreamBufferReceive(stream_1, &data, 3, 10000);
-        if(size>=3){
-            duty = data[0] | data[1] << 8;
-            ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comparator, duty));
+        int size = xStreamBufferReceive(IBUS_STREAM, &data, IBUS_STREAM_LENGTH, 10000);
+        if(size>=IBUS_STREAM_LENGTH){
+            for(int i = 0; i < CHANNELS ; i++ ){
+                channels[i] = data[2*i] | data[2*i+1] << 8;
+            }
+
+            uint16_t ledDuty = (channels[6]-1000)*100/2000;
+            ledDuty = clamp_u16(ledDuty,0,99);
+
+            ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(LEDcmpr, ledDuty));
+            ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(SERVcmpr, channels[5]));
+            ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(M5cmpr, channels[4]));
         }else{
             printf("dropped packet of size %d",size);
         }
@@ -267,7 +346,8 @@ void led_task(void* arg){
 
 void app_main(void)
 {
-    init();
-    xTaskCreate(rx_task, "RXTASK", 2048, NULL, configMAX_PRIORITIES - 1, NULL);
-    xTaskCreate(led_task, "LEDTASK", 2048, NULL, configMAX_PRIORITIES - 1, NULL);
+    IBUS_init();
+    mcpwm_init();
+    xTaskCreate(UART_rx_task, "RXTASK", 2048, NULL, configMAX_PRIORITIES - 1, NULL);
+    xTaskCreate(motor_task, "MOTORTASK", 2048, NULL, configMAX_PRIORITIES - 1, NULL);
 }
