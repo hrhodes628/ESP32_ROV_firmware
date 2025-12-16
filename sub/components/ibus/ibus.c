@@ -16,47 +16,6 @@ static StreamBufferHandle_t ibus_stream;
 static uint8_t ibus_channels;
 static uart_port_t ibus_uart;
 
-// -------------------- Init --------------------
-
-void ibus_init(const ibus_config_t *cfg)
-{
-    ibus_uart = cfg->uart;
-    ibus_channels = cfg->channel_count;
-
-    const uart_config_t uart_cfg = {
-        .baud_rate = IBUS_BAUDRATE,
-        .data_bits = UART_DATA_8_BITS,
-        .parity    = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_DEFAULT,
-    };
-
-    ESP_ERROR_CHECK(uart_driver_install(
-        ibus_uart, 1024, 0, 0, NULL, 0));
-
-    ESP_ERROR_CHECK(uart_param_config(ibus_uart, &uart_cfg));
-
-    ESP_ERROR_CHECK(uart_set_pin(
-        ibus_uart,
-        cfg->tx_pin,
-        cfg->rx_pin,
-        UART_PIN_NO_CHANGE,
-        UART_PIN_NO_CHANGE));
-
-    ibus_stream = xStreamBufferCreate(
-        ibus_channels * 2,
-        ibus_channels * 2);
-
-    xTaskCreatePinnedToCore(
-        ibus_rx_task,
-        "ibus_rx",
-        2048,
-        NULL,
-        configMAX_PRIORITIES - 1,
-        NULL,
-        0);
-}
 
 static void ibus_rx_task(void *arg)
 {
@@ -121,4 +80,46 @@ bool ibus_read(ibus_frame_t *out, TickType_t timeout)
     }
 
     return true;
+}
+
+//init
+
+void ibus_init(const ibus_config_t *cfg)
+{
+    ibus_uart = cfg->uart;
+    ibus_channels = cfg->channel_count;
+
+    const uart_config_t uart_cfg = {
+        .baud_rate = IBUS_BAUDRATE,
+        .data_bits = UART_DATA_8_BITS,
+        .parity    = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_DEFAULT,
+    };
+
+    ESP_ERROR_CHECK(uart_driver_install(
+        ibus_uart, 1024, 0, 0, NULL, 0));
+
+    ESP_ERROR_CHECK(uart_param_config(ibus_uart, &uart_cfg));
+
+    ESP_ERROR_CHECK(uart_set_pin(
+        ibus_uart,
+        cfg->tx_pin,
+        cfg->rx_pin,
+        UART_PIN_NO_CHANGE,
+        UART_PIN_NO_CHANGE));
+
+    ibus_stream = xStreamBufferCreate(
+        ibus_channels * 2,
+        ibus_channels * 2);
+
+    xTaskCreatePinnedToCore(
+        ibus_rx_task,
+        "ibus_rx",
+        2048,
+        NULL,
+        configMAX_PRIORITIES - 1,
+        NULL,
+        0);
 }

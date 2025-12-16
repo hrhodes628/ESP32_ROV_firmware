@@ -1,5 +1,6 @@
 #pragma once
 #include "driver/gpio.h"
+#include "driver/uart.h"
 
 //IBUS pin numbers
 #define IBUS_UART UART_NUM_2
@@ -11,10 +12,10 @@
 #define MAVLINK_TX_PIN GPIO_NUM_17
 
 //motor pin numbers
-#define M1 GPIO_NUM_10
-#define M2 GPIO_NUM_11
-#define M3 GPIO_NUM_12
-#define M4 GPIO_NUM_13
-#define M5 GPIO_NUM_15
-#define SERV GPIO_NUM_18
-#define LED GPIO_NUM_19
+#define MOTOR_FL_PIN GPIO_NUM_10
+#define MOTOR_FR_PIN GPIO_NUM_11
+#define MOTOR_RR_PIN GPIO_NUM_12
+#define MOTOR_RL_PIN GPIO_NUM_13
+#define MOTOR_VERT_PIN GPIO_NUM_15
+#define SERVO_TILT_PIN GPIO_NUM_18
+#define LED_PANEL_PIN GPIO_NUM_19

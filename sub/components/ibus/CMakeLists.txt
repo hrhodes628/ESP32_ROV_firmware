@@ -1,5 +1,6 @@
 idf_component_register(
     SRCS "ibus.c"
     INCLUDE_DIRS "include"
-    REQUIRES driver freertos 
+    REQUIRES esp_driver_gpio esp_driver_uart
+    PRIV_REQUIRES freertos log
 )

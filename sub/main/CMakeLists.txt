@@ -1,4 +1,6 @@
 idf_component_register(SRCS "main.c"
-                    INCLUDE_DIRS ".")
+                        INCLUDE_DIRS "."
+                        REQUIRES board telemetry motor ibus
+                        )
 
-target_compile_options(${COMPONENT_LIB} PRIVATE -Wno-address-of-packed-member)
+idf_build_set_property(COMPILE_OPTIONS "-Wno-address-of-packed-member" APPEND)
