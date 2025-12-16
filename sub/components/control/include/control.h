@@ -11,4 +11,3 @@ typedef struct {
 
 void control_init(void);
 void control_update(const control_input_t *in);
-static float norm_ibus(uint16_t v);

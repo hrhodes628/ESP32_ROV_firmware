@@ -1,6 +1,8 @@
 #include "control.h"
+#include "arming.h"
 #include "motor.h"
 #include "ibus.h"
+#include <math.h>
 
 
 #define ARMING_DEADBAND 0.05f
@@ -47,7 +49,8 @@ void control_update(const control_input_t *in)
     motor_set_norm(MOTOR_RIGHT, right);
 }
 
-static bool inputs_are_neutral(const control_input_t *in){
+static bool inputs_are_neutral(const control_input_t *in)
+{
 
     return( fabsf(in->forward) < ARMING_DEADBAND &&
             fabsf(in->strafe) < ARMING_DEADBAND &&
