@@ -137,7 +137,7 @@ void motor_set_us(motor_id_t motor, uint16_t pulse_us)
             servo_pwm.cmpr, pulse_us);
         break;
 
-    case MOTOR_M5:
+    case MOTOR_VERT:
         mcpwm_comparator_set_compare_value(
             motor_vert_pwm.cmpr, pulse_us);
         break;
@@ -147,10 +147,9 @@ void motor_set_us(motor_id_t motor, uint16_t pulse_us)
     }
 }
 
-void motor_set_led_duty(uint8_t percent)
+void motor_set_norm_led_duty(float duty)
 {
-    if (percent > 100) percent = 100;
-    uint32_t ticks = percent * LED_PERIOD_TICKS / 100;
+    uint32_t ticks = (duty+1)/2 * LED_PERIOD_TICKS;
 
     mcpwm_comparator_set_compare_value(
         led_pwm.cmpr, ticks);
@@ -165,8 +164,7 @@ void motor_set_norm(motor_id_t motor, float value)
     return;
 #endif
 
-    uint16_t pulse_us =
-        PWM_NEUTRAL_US + (int16_t)(value * PWM_RANGE_US);
+    uint16_t pulse_us =PWM_NEUTRAL_US + (int16_t)(value * PWM_RANGE_US);
 
     motor_set_us(motor, pulse_us);
 }
