@@ -15,13 +15,16 @@
 /* ---------- MAVLink config ---------- */
 #define MAV_SYS_ID   1
 #define MAV_COMP_ID  1
-#define MAV_BAUD     57600
+
 
 /* ---------- Telemetry timing ---------- */
 #define TELEMETRY_RATE_MS 100   // 10 Hz
 #define HEARTBEAT_DIV     10    // 1 Hz at 10 Hz loop
 
 /* ---------- Internal telemetry state ---------- */
+
+static telemetry_config_t config;
+
 typedef struct {
     float voltage;
     float depth;
@@ -41,8 +44,8 @@ static SemaphoreHandle_t state_lock;
 
 static void mav_uart_init(void)
 {
-    uart_config_t cfg = {
-        .baud_rate = MAV_BAUD,
+    uart_config_t mavlink_uart_conf = {
+        .baud_rate = config.baudrate,
         .data_bits = UART_DATA_8_BITS,
         .parity    = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
@@ -51,13 +54,13 @@ static void mav_uart_init(void)
     };
 
     ESP_ERROR_CHECK(uart_driver_install(
-        MAVLINK_UART, 2048, 0, 0, NULL, 0));
+        config.uart , 2048, 0, 0, NULL, 0));
 
-    ESP_ERROR_CHECK(uart_param_config(MAVLINK_UART, &cfg));
+    ESP_ERROR_CHECK(uart_param_config(config.uart, &mavlink_uart_conf));
 
     ESP_ERROR_CHECK(uart_set_pin(
-        MAVLINK_UART,
-        MAVLINK_TX_PIN,
+        config.uart,
+        config.tx_pin,
         UART_PIN_NO_CHANGE,
         UART_PIN_NO_CHANGE,
         UART_PIN_NO_CHANGE));
@@ -67,7 +70,7 @@ static void mav_send(const mavlink_message_t *msg)
 {
     uint8_t buf[MAVLINK_MAX_PACKET_LEN];
     uint16_t len = mavlink_msg_to_send_buffer(buf, msg);
-    uart_write_bytes(MAVLINK_UART, (const char *)buf, len);
+    uart_write_bytes(config.uart, (const char *)buf, len);
 }
 
 /* ---------- Public setters (thread-safe) ---------- */
@@ -134,11 +137,13 @@ void telemetry_send_text(const char *text, uint8_t severity)
 
 static void telemetry_task(void *arg)
 {
-    TickType_t last = xTaskGetTickCount();
-    uint8_t hb_div = 0;
+    uint32_t last_hb_ms = 0;
+    TickType_t last_wake = xTaskGetTickCount();
 
     while (1) {
         telemetry_state_t snap;
+
+        uint32_t now_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
 
         /* Take snapshot */
         xSemaphoreTake(state_lock, portMAX_DELAY);
@@ -148,7 +153,7 @@ static void telemetry_task(void *arg)
         mavlink_message_t msg;
 
         /* ---------- Heartbeat @ 1 Hz ---------- */
-        if (++hb_div >= HEARTBEAT_DIV) {
+        if ((now_ms - last_hb_ms) >= config.heartbeat_period_ms) {
             mavlink_msg_heartbeat_pack(
                 MAV_SYS_ID,
                 MAV_COMP_ID,
@@ -160,7 +165,7 @@ static void telemetry_task(void *arg)
                 MAV_STATE_ACTIVE
             );
             mav_send(&msg);
-            hb_div = 0;
+            last_hb_ms = now_ms;
         }
 
         /* ---------- System voltage ---------- */
@@ -201,14 +206,15 @@ static void telemetry_task(void *arg)
         );
         mav_send(&msg);
 
-        vTaskDelayUntil(&last, pdMS_TO_TICKS(TELEMETRY_RATE_MS));
+        vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(config.telemetry_rate_ms));
     }
 }
 
 /* ---------- Init ---------- */
 
-void telemetry_init(void)
+void telemetry_init(const telemetry_config_t *cfg)
 {
+    config = *cfg ;
     state_lock = xSemaphoreCreateMutex();
 
     mav_uart_init();

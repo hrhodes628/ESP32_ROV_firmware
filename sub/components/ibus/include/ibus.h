@@ -24,6 +24,7 @@ typedef struct {
     gpio_num_t rx_pin;
     gpio_num_t tx_pin;
     uint8_t channel_count;
+    int baudrate;
 } ibus_config_t;
 
 // bool ibus_read(ibus_frame_t *out);

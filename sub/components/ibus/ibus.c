@@ -9,22 +9,12 @@
 
 #define TAG "ibus"
 
-#define IBUS_BAUDRATE 115200
-#define IBUS_OVERHEAD 4
-#define IBUS_HEADER_0 0x20
-#define IBUS_HEADER_1 0x44   // some receivers use 0x40 or 0x44
-
-#define IBUS_MAX_US 2000
-#define IBUS_MIN_US 1000
-#define IBUS_MID_US 1500
-
 static const float ibus_scale_bipolar = 1.0f / (IBUS_MAX_US - IBUS_MID_US);
 
 static SemaphoreHandle_t ibus_mutex;
 static ibus_frame_t latest_frame;
 static ibus_state_t status;
-static uart_port_t ibus_uart;
-static uint8_t ibus_channels;
+static ibus_config_t config;
 static bool frame_valid;
 
 static inline float norm_bipolar(uint16_t v)
@@ -46,13 +36,13 @@ static uint16_t ibus_checksum(const uint8_t *buf, uint8_t len)
 
 static void ibus_rx_task(void *arg)
 {
-    const int packet_len = ibus_channels * 2 + IBUS_OVERHEAD;
+    const int packet_len = config.channel_count * 2 + IBUS_OVERHEAD;
     uint8_t buf[32];
     uint32_t last_frame_time_ms =0;
 
     while (1) {
         int len = uart_read_bytes(
-            ibus_uart,
+            config.uart,
             &buf,
             packet_len,
             pdMS_TO_TICKS(20));
@@ -94,7 +84,7 @@ static void ibus_rx_task(void *arg)
         uint32_t now_ms = esp_timer_get_time() / 1000;
 
         if (xSemaphoreTake(ibus_mutex, portMAX_DELAY)) {
-            for (int ch = 0; ch < ibus_channels; ch++) {
+            for (int ch = 0; ch < config.channel_count; ch++) {
                 latest_frame.channels[ch] = payload[2 * ch] | (payload[2 * ch + 1] << 8);
             }
 
@@ -167,8 +157,7 @@ bool ibus_get_state(ibus_state_t *out_state){
 
 void ibus_init(const ibus_config_t *cfg)
 {
-    ibus_uart = cfg->uart;
-    ibus_channels = cfg->channel_count;
+    config = *cfg;
 
     ibus_mutex = xSemaphoreCreateMutex();
     frame_valid = false;
@@ -179,7 +168,7 @@ void ibus_init(const ibus_config_t *cfg)
     status.frame_ok = false;
 
     const uart_config_t uart_cfg = {
-        .baud_rate = IBUS_BAUDRATE,
+        .baud_rate = config.baudrate,
         .data_bits = UART_DATA_8_BITS,
         .parity    = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
@@ -188,12 +177,12 @@ void ibus_init(const ibus_config_t *cfg)
     };
 
     ESP_ERROR_CHECK(uart_driver_install(
-        ibus_uart, 1024, 0, 0, NULL, 0));
+        config.uart, 1024, 0, 0, NULL, 0));
 
-    ESP_ERROR_CHECK(uart_param_config(ibus_uart, &uart_cfg));
+    ESP_ERROR_CHECK(uart_param_config(config.uart, &uart_cfg));
 
     ESP_ERROR_CHECK(uart_set_pin(
-        ibus_uart,
+        config.uart,
         cfg->tx_pin,
         cfg->rx_pin,
         UART_PIN_NO_CHANGE,
