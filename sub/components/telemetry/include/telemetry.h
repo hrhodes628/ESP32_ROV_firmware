@@ -15,12 +15,14 @@ typedef struct {
 
 /* ---------- Init ---------- */
 void telemetry_init(const telemetry_config_t *cfg);
+void telemetry_start(void);
 
 /* ---------- Sensor updates ---------- */
 void telemetry_set_voltage(float v);
 void telemetry_set_depth(float m);
 void telemetry_set_heading(float deg);
 void telemetry_set_camera_pitch(float rad);
+void telemetry_set_armed(bool armed );
 
 /* ---------- Status / errors ---------- */
 void telemetry_report_ibus(bool ok, uint32_t dropped);

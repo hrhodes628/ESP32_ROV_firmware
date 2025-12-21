@@ -31,3 +31,4 @@ typedef struct {
 bool ibus_norm_read(ibus_norm_frame_t *out);
 bool ibus_get_state(ibus_state_t *out_state);
 void ibus_init(const ibus_config_t *cfg);
+void ibus_start(void);

@@ -1,11 +1,10 @@
 ##Arming
-- [] finish arming saftey (channels == 0) (ibus, control)
+- [x] finish arming saftey (channels == 0) (ibus, control)
 - [] make failsafe mode (ibus,control)
 - [] dry-run mode
 ##Control
-- [] setup mixing for intended motor layout
+- [ish] setup mixing for intended motor layout
 - [] motor ramp and pwm limits
-
 ##Telemetry
 - [] sensor integration
 - [] IBUS LQ

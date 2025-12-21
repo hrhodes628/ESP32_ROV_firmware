@@ -188,6 +188,10 @@ void ibus_init(const ibus_config_t *cfg)
         UART_PIN_NO_CHANGE,
         UART_PIN_NO_CHANGE));
 
+    ESP_LOGI(TAG,"IBUS hardware initialised");
+}
+
+void ibus_start(void){
 
     xTaskCreatePinnedToCore(
         ibus_rx_task,
@@ -197,4 +201,7 @@ void ibus_init(const ibus_config_t *cfg)
         configMAX_PRIORITIES - 1,
         NULL,
         0);
+
+    ESP_LOGI(TAG, "IBUS task started");
+
 }

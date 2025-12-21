@@ -3,6 +3,7 @@
 #include "telemetry.h"
 #include "motor.h"
 #include "control.h"
+#include "sensors.h"
 
 
 void app_main(void)
@@ -27,4 +28,9 @@ void app_main(void)
             .telemetry_rate_ms = 150
     };
     telemetry_init(&telem_cfg);
+    sensors_init();
+
+    ibus_start();
+    telemetry_start();
+    sensors_start();
 }

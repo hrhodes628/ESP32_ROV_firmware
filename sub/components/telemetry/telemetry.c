@@ -16,11 +16,6 @@
 #define MAV_SYS_ID   1
 #define MAV_COMP_ID  1
 
-
-/* ---------- Telemetry timing ---------- */
-#define TELEMETRY_RATE_MS 100   // 10 Hz
-#define HEARTBEAT_DIV     10    // 1 Hz at 10 Hz loop
-
 /* ---------- Internal telemetry state ---------- */
 
 static telemetry_config_t config;
@@ -35,6 +30,8 @@ typedef struct {
     uint32_t ibus_dropped;
 
     uint32_t error_flags;
+
+    bool armed;
 } telemetry_state_t;
 
 static telemetry_state_t state;
@@ -74,6 +71,14 @@ static void mav_send(const mavlink_message_t *msg)
 }
 
 /* ---------- Public setters (thread-safe) ---------- */
+
+void telemetry_set_armed(bool armed ){
+
+    xSemaphoreTake(state_lock, portMAX_DELAY);
+    state.armed = armed;
+    xSemaphoreGive(state_lock);
+
+}
 
 void telemetry_set_voltage(float v)
 {
@@ -139,7 +144,7 @@ static void telemetry_task(void *arg)
 {
     uint32_t last_hb_ms = 0;
     TickType_t last_wake = xTaskGetTickCount();
-
+    
     while (1) {
         telemetry_state_t snap;
 
@@ -154,13 +159,20 @@ static void telemetry_task(void *arg)
 
         /* ---------- Heartbeat @ 1 Hz ---------- */
         if ((now_ms - last_hb_ms) >= config.heartbeat_period_ms) {
+            
+            uint8_t base_mode = MAV_MODE_FLAG_CUSTOM_MODE_ENABLED;
+
+            if (snap.armed) {
+                base_mode |= MAV_MODE_FLAG_SAFETY_ARMED;
+            }
+
             mavlink_msg_heartbeat_pack(
                 MAV_SYS_ID,
                 MAV_COMP_ID,
                 &msg,
                 MAV_TYPE_SUBMARINE,
                 MAV_AUTOPILOT_GENERIC,
-                MAV_MODE_MANUAL_ARMED,
+                base_mode,
                 0,
                 MAV_STATE_ACTIVE
             );
@@ -217,7 +229,14 @@ void telemetry_init(const telemetry_config_t *cfg)
     config = *cfg ;
     state_lock = xSemaphoreCreateMutex();
 
+    memset(&state, 0, sizeof(state));
+
     mav_uart_init();
+
+    ESP_LOGI(TAG, "Telemetry initialized");
+}
+
+void telemetry_start(){
 
     xTaskCreatePinnedToCore(
         telemetry_task,
@@ -229,5 +248,6 @@ void telemetry_init(const telemetry_config_t *cfg)
         0
     );
 
-    ESP_LOGI(TAG, "Telemetry initialized");
+    ESP_LOGI(TAG, "Telemetry task started");
+
 }
