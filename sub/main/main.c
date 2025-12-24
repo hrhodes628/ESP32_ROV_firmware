@@ -8,17 +8,17 @@
 
 void app_main(void)
 {
-    motor_init();
+    //motor_init();
 
-    ibus_config_t ibus_cfg = {
-            .uart=IBUS_UART,
-            .tx_pin=IBUS_TXD_PIN,
-            .rx_pin=IBUS_RXD_PIN,
-            .channel_count=8,
-            .baudrate = IBUS_BAUD
-    };
-    ibus_init(&ibus_cfg);
-    control_init();
+//     ibus_config_t ibus_cfg = {
+//             .uart=IBUS_UART,
+//             .tx_pin=IBUS_TXD_PIN,
+//             .rx_pin=IBUS_RXD_PIN,
+//             .channel_count=8,
+//             .baudrate = IBUS_BAUD
+//     };
+//     ibus_init(&ibus_cfg);
+//     control_init();
 
     telemetry_config_t telem_cfg = {
             .tx_pin = MAVLINK_TX_PIN,
@@ -30,7 +30,7 @@ void app_main(void)
     telemetry_init(&telem_cfg);
     sensors_init();
 
-    ibus_start();
+    //ibus_start();
     telemetry_start();
     sensors_start();
 }

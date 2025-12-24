@@ -23,7 +23,7 @@ static telemetry_config_t config;
 typedef struct {
     float voltage;
     float depth;
-    float heading;
+    int16_t heading;
     float camera_pitch;
 
     bool ibus_ok;
@@ -185,11 +185,11 @@ static void telemetry_task(void *arg)
             MAV_SYS_ID,
             MAV_COMP_ID,
             &msg,
-            0,0,0,
+            0,0,0,0,
             (uint16_t)(snap.voltage * 1000.0f),
-            0,
             -1,
-            0,0,0,0,0,0,0
+            -1,
+            0,0,0,0,0,0
         );
         mav_send(&msg);
 
@@ -206,6 +206,21 @@ static void telemetry_task(void *arg)
         );
         mav_send(&msg);
 
+        // mavlink_msg_global_position_int_pack(
+        //     MAV_SYS_ID,
+        //     MAV_COMP_ID,
+        //     &msg,
+        //     0,
+        //     0,
+        //     0,
+        //     snap.depth*1000,
+        //     snap.depth*1000,
+        //     0,
+        //     0,
+        //     0,
+        //     snap.heading
+        // );
+
         /* ---------- Heading / depth ---------- */
         mavlink_msg_vfr_hud_pack(
             MAV_SYS_ID,
@@ -213,8 +228,9 @@ static void telemetry_task(void *arg)
             &msg,
             0, 0,
             snap.heading,
-            -snap.depth,   // altitude = -depth
-            0, 0
+            0,
+            snap.depth,   // altitude = -depth
+            0
         );
         mav_send(&msg);
 
