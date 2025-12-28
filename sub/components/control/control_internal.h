@@ -19,5 +19,6 @@ enum {
     CH_VERTICAL,
     CH_YAW,
     CH_ARM,
+    CH_TILT,
     CH_LED,
 };

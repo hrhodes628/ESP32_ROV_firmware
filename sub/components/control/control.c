@@ -1,6 +1,6 @@
 #include "control.h"
 #include "control_internal.h"
-
+#include "telemetry.h"
 #include "arming.h"
 #include "motor.h"
 #include "ibus.h"
@@ -9,6 +9,8 @@
 
 #define ARMING_DEADBAND 0.05f
 #define FAILSAFE_TIMEOUT_MS 200
+
+static TickType_t last_valid_rc;
 
 static float norm_clamp(float v)
 {
@@ -31,6 +33,7 @@ static control_input_t ctrl_in;
 void control_init(void)
 {
     ctrl_in.valid = false;
+    last_valid_rc =0;
 }
 
 void control_step(void)
@@ -38,15 +41,23 @@ void control_step(void)
     ibus_norm_frame_t rc;
 
     /* ---- Read normalised RC ---- */
-    if (!ibus_norm_read(&rc)) {
-        ctrl_in.valid = false;
-    } else {
+    if (ibus_norm_read(&rc)) {
+        last_valid_rc = xTaskGetTickCount();
+
         ctrl_in.forward  = rc.channels[CH_FORWARD];
         ctrl_in.strafe   = rc.channels[CH_STRAFE];
         ctrl_in.vertical = rc.channels[CH_VERTICAL];
         ctrl_in.yaw      = rc.channels[CH_YAW];
+        ctrl_in.tilt     = rc.channels[CH_TILT];
+        ctrl_in.led_duty = rc.channels[CH_LED];
         ctrl_in.arm      = (rc.channels[CH_ARM] > 0.5f);
         ctrl_in.valid    = true;
+    }
+
+    TickType_t now = xTaskGetTickCount();
+
+    if ((now - last_valid_rc) > pdMS_TO_TICKS(FAILSAFE_TIMEOUT_MS)) {
+        ctrl_in.valid = false;
     }
 
     /* ---- Failsafe ---- */
@@ -63,8 +74,10 @@ void control_step(void)
 
     if (!armed && want_arm && safe_arm) {
         arming_set(true);
+        telemetry_set_armed(true);
     } else if (armed && !want_arm) {
         arming_set(false);
+        telemetry_set_armed(false);
     }
 
     if (!arming_is_armed()) {
@@ -84,4 +97,28 @@ void control_step(void)
 
     motor_set_norm(MOTOR_SERVO,  servo);
     motor_set_norm(MOTOR_VERT, vert);
+}
+
+void control_task(void *arg)
+{
+    TickType_t last = xTaskGetTickCount();
+
+    while (1) {
+        control_step();
+        vTaskDelayUntil(&last, pdMS_TO_TICKS(10)); // 100 Hz
+    }
+}
+
+void control_start(void){
+
+    xTaskCreatePinnedToCore(
+        control_task,
+        "control",
+        4096,
+        NULL,
+        9,
+        NULL,
+        1
+    );
+
 }

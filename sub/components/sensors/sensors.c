@@ -36,7 +36,7 @@ static esp_err_t i2c_read_reg(i2c_master_dev_handle_t dev, uint8_t reg, uint8_t 
 }
 
 #ifdef MAG_ENABLED
-static float mag_read_heading(void){
+static int16_t mag_read_heading(void){
     uint8_t buf[6];
     int16_t x, y, z;
 
@@ -46,10 +46,10 @@ static float mag_read_heading(void){
     z = (buf[2] << 8) | buf[3];
     y = (buf[4] << 8) | buf[5];
 
-    float heading = atan2f((float)y, (float)x) * (180.0f / M_PI);
+    float heading = atan2f((float)y, (float)x) * (180.0f / (float)M_PI);
     if (heading < 0.0f) heading += 360.0f;
 
-    return heading;
+    return((int16_t)(heading+0.5f));
 }
 
 static void hmc5883l_attach(void)
@@ -210,7 +210,7 @@ void sensors_start(void){
         NULL,
         5,
         NULL,
-        1
+        0
     );
 
 }

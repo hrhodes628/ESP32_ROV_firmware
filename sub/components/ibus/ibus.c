@@ -198,9 +198,9 @@ void ibus_start(void){
         "ibus_rx",
         2048,
         NULL,
-        configMAX_PRIORITIES - 1,
+        8,
         NULL,
-        0);
+        1);
 
     ESP_LOGI(TAG, "IBUS task started");
 

@@ -2,3 +2,4 @@
 #include <stdbool.h>
 
 void control_init(void);
+void control_start(void);

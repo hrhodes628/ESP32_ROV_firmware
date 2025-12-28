@@ -206,21 +206,6 @@ static void telemetry_task(void *arg)
         );
         mav_send(&msg);
 
-        // mavlink_msg_global_position_int_pack(
-        //     MAV_SYS_ID,
-        //     MAV_COMP_ID,
-        //     &msg,
-        //     0,
-        //     0,
-        //     0,
-        //     snap.depth*1000,
-        //     snap.depth*1000,
-        //     0,
-        //     0,
-        //     0,
-        //     snap.heading
-        // );
-
         /* ---------- Heading / depth ---------- */
         mavlink_msg_vfr_hud_pack(
             MAV_SYS_ID,
@@ -259,7 +244,7 @@ void telemetry_start(){
         "telemetry",
         4096,
         NULL,
-        5,
+        4,
         NULL,
         0
     );
