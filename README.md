@@ -15,5 +15,10 @@ motor - manages PWM and RMT channels for use with ESCs - RMT not implemented
 sensors - handles the collection and processing of sensor data to be sent to the OSD  
 telemetry - sends the sensor data to the OSD
 
+SURFACE
+-------
+
+Not yet implemented in any workable state with new software architecture
+
 
 
