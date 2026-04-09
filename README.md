@@ -18,7 +18,7 @@ telemetry - sends the sensor data to the OSD
 SURFACE
 -------
 
-Not yet implemented in any workable state with new software architecture
+Not yet implemented, still in build for debug of UART communication
 
 
 
