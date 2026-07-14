@@ -6,20 +6,28 @@
 #include "driver/i2c_master.h"
 #include "esp_adc/adc_oneshot.h"
 #include "driver/gpio.h"
+
+#define _USE_MATH_DEFINES
 #include <math.h>
 
 #define SENSORS_REFRESH_MS 150
 
+#if defined(MAG_ENABLED) || defined(BARO_ENABLED)
 static i2c_master_bus_handle_t i2c_bus;
+#endif
+#ifdef MAG_ENABLED
 static i2c_master_dev_handle_t mag_dev;
+#endif
+#ifdef BARO_ENABLED
 static i2c_master_dev_handle_t bmp_dev;
-
+#endif
+#ifdef ADC_ENABLED
 static adc_oneshot_unit_handle_t adc_handle;
-
+#endif
 
 static esp_err_t i2c_write_reg(i2c_master_dev_handle_t dev, uint8_t reg, uint8_t val)
 {
-    uint8_t buf[2] = { reg, val };
+    uint8_t buf[2] = {reg, val};
     return i2c_master_transmit(dev, buf, sizeof(buf), -1);
 }
 
@@ -31,12 +39,12 @@ static esp_err_t i2c_read_reg(i2c_master_dev_handle_t dev, uint8_t reg, uint8_t 
         1,
         data,
         len,
-        -1
-    );
+        -1);
 }
 
 #ifdef MAG_ENABLED
-static int16_t mag_read_heading(void){
+static int16_t mag_read_heading(void)
+{
     uint8_t buf[6];
     int16_t x, y, z;
 
@@ -47,9 +55,10 @@ static int16_t mag_read_heading(void){
     y = (buf[4] << 8) | buf[5];
 
     float heading = atan2f((float)y, (float)x) * (180.0f / (float)M_PI);
-    if (heading < 0.0f) heading += 360.0f;
+    if (heading < 0.0f)
+        heading += 360.0f;
 
-    return((int16_t)(heading+0.5f));
+    return ((int16_t)(heading + 0.5f));
 }
 
 static void hmc5883l_attach(void)
@@ -61,8 +70,7 @@ static void hmc5883l_attach(void)
     };
 
     ESP_ERROR_CHECK(
-        i2c_master_bus_add_device(i2c_bus, &cfg, &mag_dev)
-    );
+        i2c_master_bus_add_device(i2c_bus, &cfg, &mag_dev));
 }
 
 static void hmc5883l_init(void)
@@ -77,18 +85,19 @@ static void hmc5883l_init(void)
     i2c_write_reg(mag_dev, 0x02, 0x00);
 }
 #else
-static int16_t mag_read_heading(void){
-    return(67);
+static int16_t mag_read_heading(void)
+{
+    return (67);
 }
 #endif
 
 #ifdef BARO_ENABLED
-static float baro_read_depth_m(void){
+static float baro_read_depth_m(void)
+{
 
     // TODO: implement BMP180 compensated pressure
     // Return 0.0f for now so telemetry stays sane
     return 0.0f;
-
 }
 
 static void bmp180_attach(void)
@@ -100,8 +109,7 @@ static void bmp180_attach(void)
     };
 
     ESP_ERROR_CHECK(
-        i2c_master_bus_add_device(i2c_bus, &cfg, &bmp_dev)
-    );
+        i2c_master_bus_add_device(i2c_bus, &cfg, &bmp_dev));
 }
 
 static void bmp180_init(void)
@@ -109,8 +117,9 @@ static void bmp180_init(void)
     // Nothing yet — calibration will go here
 }
 #else
-static float baro_read_depth_m(void){
-    return(10.0f);
+static float baro_read_depth_m(void)
+{
+    return (10.0f);
 }
 #endif
 
@@ -131,29 +140,30 @@ static void adc_init(void)
     ESP_ERROR_CHECK(adc_oneshot_config_channel(
         adc_handle,
         BOARD_VOLTAGE_ADC_CH,
-        &chan_cfg
-    ));
+        &chan_cfg));
 }
 
-static float adc_read_voltage_v(void){
+static float adc_read_voltage_v(void)
+{
 
     int raw;
     adc_oneshot_read(adc_handle, BOARD_VOLTAGE_ADC_CH, &raw);
 
     float v_adc = (raw / 4095.0f) * 3.3f;
     return v_adc / BOARD_VOLTAGE_DIVIDER_RATIO;
-
 }
 
 #else
-static float adc_read_voltage_v(void){
-    return(12.0f);
+static float adc_read_voltage_v(void)
+{
+    return (12.0f);
 }
 
 #endif
 
-static void i2c_init(){
-        i2c_master_bus_config_t bus_cfg = {
+static void i2c_init()
+{
+    i2c_master_bus_config_t bus_cfg = {
         .i2c_port = I2C_NUM_0,
         .sda_io_num = I2C_SDA_PIN,
         .scl_io_num = I2C_SCL_PIN,
@@ -169,9 +179,10 @@ static void sensors_task(void *arg)
 {
     TickType_t last_wake = xTaskGetTickCount();
 
-    while(1) {
+    while (1)
+    {
         float heading = mag_read_heading();
-        float depth   = baro_read_depth_m();
+        float depth = baro_read_depth_m();
         float voltage = adc_read_voltage_v();
 
         telemetry_set_heading(heading);
@@ -184,7 +195,8 @@ static void sensors_task(void *arg)
     }
 }
 
-void sensors_init(void){
+void sensors_init(void)
+{
     i2c_init();
 
 #ifdef MAG_ENABLED
@@ -198,10 +210,10 @@ void sensors_init(void){
 #ifdef ADC_ENABLED
     adc_init();
 #endif
-
 }
 
-void sensors_start(void){
+void sensors_start(void)
+{
 
     xTaskCreatePinnedToCore(
         sensors_task,
@@ -210,7 +222,5 @@ void sensors_start(void){
         NULL,
         5,
         NULL,
-        0
-    );
-
+        0);
 }
